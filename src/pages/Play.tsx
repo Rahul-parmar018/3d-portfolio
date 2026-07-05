@@ -1,476 +1,679 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
-import { Chess, Square, PieceSymbol, Color } from "chess.js";
-import RedoxChessEngine from "../utils/redoxchessEngine";
+import { MdArrowOutward, MdPlayArrow } from "react-icons/md";
+import { candidexPipeline, promptStrategies, upcomingDomains } from "../config/playground";
+import { socials } from "../config/socials";
+import { trackEvent } from "../utils/analytics";
 import "./Play.css";
 
-// Piece SVG components matching chess.com style with custom colors
-const PIECES: Record<string, string> = {
-  // White pieces (light cream color)
-  wK: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 45 45"><g fill="none" fill-rule="evenodd" stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"><path stroke-linejoin="miter" d="M22.5 11.63V6M20 8h5"/><path fill="#fff" stroke-linecap="butt" stroke-linejoin="miter" d="M22.5 25s4.5-7.5 3-10.5c0 0-1-2.5-3-2.5s-3 2.5-3 2.5c-1.5 3 3 10.5 3 10.5"/><path fill="#fff" d="M12.5 37c5.5 3.5 14.5 3.5 20 0v-7s9-4.5 6-10.5c-4-6.5-13.5-3.5-16 4V27v-3.5c-2.5-7.5-12-10.5-16-4-3 6 6 10.5 6 10.5v7"/><path d="M12.5 30c5.5-3 14.5-3 20 0m-20 3.5c5.5-3 14.5-3 20 0m-20 3.5c5.5-3 14.5-3 20 0"/></g></svg>`,
-  wQ: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 45 45"><g fill="#fff" fill-rule="evenodd" stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"><path d="M8 12a2 2 0 1 1-4 0 2 2 0 1 1 4 0zm16.5-4.5a2 2 0 1 1-4 0 2 2 0 1 1 4 0zM41 12a2 2 0 1 1-4 0 2 2 0 1 1 4 0zM16 9a2 2 0 1 1-4 0 2 2 0 1 1 4 0zM33 9a2 2 0 1 1-4 0 2 2 0 1 1 4 0z"/><path stroke-linecap="butt" d="M9 26c8.5-1.5 21-1.5 27 0l2-12-7 11V11l-5.5 13.5-3-15-3 15L14 11v14L7 14l2 12z"/><path stroke-linecap="butt" d="M9 26c0 2 1.5 2 2.5 4 1 1.5 1 1 .5 3.5-1.5 1-1.5 2.5-1.5 2.5-1.5 1.5.5 2.5.5 2.5 6.5 1 16.5 1 23 0 0 0 1.5-1 0-2.5 0 0 .5-1.5-1-2.5-.5-2.5-.5-2 .5-3.5 1-2 2.5-2 2.5-4-8.5-1.5-18.5-1.5-27 0z"/><path fill="none" d="M11.5 30c3.5-1 18.5-1 22 0M12 33.5c6-1 15-1 21 0"/></g></svg>`,
-  wR: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 45 45"><g fill="#fff" fill-rule="evenodd" stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"><path stroke-linecap="butt" d="M9 39h27v-3H9v3zm3-3v-4h21v4H12zm-1-22V9h4v2h5V9h5v2h5V9h4v5"/><path d="M34 14l-3 3H14l-3-3"/><path stroke-linecap="butt" stroke-linejoin="miter" d="M31 17v12.5H14V17"/><path d="M31 29.5l1.5 2.5h-20l1.5-2.5"/><path fill="none" stroke-linejoin="miter" d="M11 14h23"/></g></svg>`,
-  wB: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 45 45"><g fill="none" fill-rule="evenodd" stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"><g fill="#fff" stroke-linecap="butt"><path d="M9 36c3.39-.97 10.11.43 13.5-2 3.39 2.43 10.11 1.03 13.5 2 0 0 1.65.54 3 2-.68.97-1.65.99-3 .5-3.39-.97-10.11.46-13.5-1-3.39 1.46-10.11.03-13.5 1-1.35.49-2.32.47-3-.5 1.35-1.46 3-2 3-2z"/><path d="M15 32c2.5 2.5 12.5 2.5 15 0 .5-1.5 0-2 0-2 0-2.5-2.5-4-2.5-4 5.5-1.5 6-11.5-5-15.5-11 4-10.5 14-5 15.5 0 0-2.5 1.5-2.5 4 0 0-.5.5 0 2z"/><path d="M25 8a2.5 2.5 0 1 1-5 0 2.5 2.5 0 1 1 5 0z"/></g><path stroke-linejoin="miter" d="M17.5 26h10M15 30h15m-7.5-14.5v5M20 18h5"/></g></svg>`,
-  wN: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 45 45"><g fill="none" fill-rule="evenodd" stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"><path fill="#fff" d="M22 10c10.5 1 16.5 8 16 29H15c0-9 10-6.5 8-21"/><path fill="#fff" d="M24 18c.38 2.91-5.55 7.37-8 9-3 2-2.82 4.34-5 4-1.042-.94 1.41-3.04 0-3-1 0 .19 1.23-1 2-1 0-4.003 1-4-4 0-2 6-12 6-12s1.89-1.9 2-3.5c-.73-.994-.5-2-.5-3 1-1 3 2.5 3 2.5h2s.78-1.992 2.5-3c1 0 1 3 1 3"/><path fill="#000" d="M9.5 25.5a.5.5 0 1 1-1 0 .5.5 0 1 1 1 0zm5.433-9.75a.5 1.5 30 1 1-.866-.5.5 1.5 30 1 1 .866.5z"/></g></svg>`,
-  wP: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 45 45"><path fill="#fff" stroke="#000" stroke-width="1.5" stroke-linecap="round" d="M22.5 9c-2.21 0-4 1.79-4 4 0 .89.29 1.71.78 2.38C17.33 16.5 16 18.59 16 21c0 2.03.94 3.84 2.41 5.03-3 1.06-7.41 5.55-7.41 13.47h23c0-7.92-4.41-12.41-7.41-13.47 1.47-1.19 2.41-3 2.41-5.03 0-2.41-1.33-4.5-3.28-5.62.49-.67.78-1.49.78-2.38 0-2.21-1.79-4-4-4z"/></svg>`,
-  // Black pieces (dark purple color matching theme)
-  bK: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 45 45"><g fill="none" fill-rule="evenodd" stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"><path stroke-linejoin="miter" d="M22.5 11.63V6" stroke="#c2a4ff"/><path fill="#1a1a2e" stroke="#c2a4ff" d="M20 8h5"/><path fill="#1a1a2e" stroke="#c2a4ff" stroke-linecap="butt" stroke-linejoin="miter" d="M22.5 25s4.5-7.5 3-10.5c0 0-1-2.5-3-2.5s-3 2.5-3 2.5c-1.5 3 3 10.5 3 10.5"/><path fill="#1a1a2e" stroke="#c2a4ff" d="M12.5 37c5.5 3.5 14.5 3.5 20 0v-7s9-4.5 6-10.5c-4-6.5-13.5-3.5-16 4V27v-3.5c-2.5-7.5-12-10.5-16-4-3 6 6 10.5 6 10.5v7"/><path stroke="#c2a4ff" d="M12.5 30c5.5-3 14.5-3 20 0m-20 3.5c5.5-3 14.5-3 20 0m-20 3.5c5.5-3 14.5-3 20 0"/></g></svg>`,
-  bQ: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 45 45"><g fill-rule="evenodd" stroke="#c2a4ff" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"><g fill="#1a1a2e"><circle cx="6" cy="12" r="2.75"/><circle cx="14" cy="9" r="2.75"/><circle cx="22.5" cy="8" r="2.75"/><circle cx="31" cy="9" r="2.75"/><circle cx="39" cy="12" r="2.75"/></g><path fill="#1a1a2e" stroke-linecap="butt" d="M9 26c8.5-1.5 21-1.5 27 0l2.5-12.5L31 25l-.3-14.1-5.2 13.6-3-14.5-3 14.5-5.2-13.6L14 25 6.5 13.5 9 26z"/><path fill="#1a1a2e" stroke-linecap="butt" d="M9 26c0 2 1.5 2 2.5 4 1 1.5 1 1 .5 3.5-1.5 1-1.5 2.5-1.5 2.5-1.5 1.5.5 2.5.5 2.5 6.5 1 16.5 1 23 0 0 0 1.5-1 0-2.5 0 0 .5-1.5-1-2.5-.5-2.5-.5-2 .5-3.5 1-2 2.5-2 2.5-4-8.5-1.5-18.5-1.5-27 0z"/><path fill="none" stroke-linecap="butt" d="M11 38.5a35 35 1 0 0 23 0"/><path fill="none" d="M11 29a35 35 1 0 1 23 0m-21.5 2.5h20m-21 3a35 35 1 0 0 22 0"/></g></svg>`,
-  bR: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 45 45"><g fill-rule="evenodd" stroke="#c2a4ff" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"><path fill="#1a1a2e" stroke-linecap="butt" d="M9 39h27v-3H9v3zm3.5-7l1.5-2.5h17l1.5 2.5h-20zm-.5 4v-4h21v4H12z"/><path fill="#1a1a2e" stroke-linecap="butt" stroke-linejoin="miter" d="M14 29.5v-13h17v13H14z"/><path fill="#1a1a2e" stroke-linecap="butt" d="M14 16.5L11 14h23l-3 2.5H14zM11 14V9h4v2h5V9h5v2h5V9h4v5H11z"/><path fill="none" stroke-linejoin="miter" d="M12 35.5h21m-20-4h19m-18-2h17m-17-13h17M11 14h23"/></g></svg>`,
-  bB: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 45 45"><g fill="none" fill-rule="evenodd" stroke="#c2a4ff" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"><g fill="#1a1a2e" stroke-linecap="butt"><path d="M9 36c3.39-.97 10.11.43 13.5-2 3.39 2.43 10.11 1.03 13.5 2 0 0 1.65.54 3 2-.68.97-1.65.99-3 .5-3.39-.97-10.11.46-13.5-1-3.39 1.46-10.11.03-13.5 1-1.35.49-2.32.47-3-.5 1.35-1.46 3-2 3-2z"/><path d="M15 32c2.5 2.5 12.5 2.5 15 0 .5-1.5 0-2 0-2 0-2.5-2.5-4-2.5-4 5.5-1.5 6-11.5-5-15.5-11 4-10.5 14-5 15.5 0 0-2.5 1.5-2.5 4 0 0-.5.5 0 2z"/><path d="M25 8a2.5 2.5 0 1 1-5 0 2.5 2.5 0 1 1 5 0z"/></g><path stroke-linejoin="miter" d="M17.5 26h10M15 30h15m-7.5-14.5v5M20 18h5"/></g></svg>`,
-  bN: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 45 45"><g fill="none" fill-rule="evenodd" stroke="#c2a4ff" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"><path fill="#1a1a2e" d="M22 10c10.5 1 16.5 8 16 29H15c0-9 10-6.5 8-21"/><path fill="#1a1a2e" d="M24 18c.38 2.91-5.55 7.37-8 9-3 2-2.82 4.34-5 4-1.042-.94 1.41-3.04 0-3-1 0 .19 1.23-1 2-1 0-4.003 1-4-4 0-2 6-12 6-12s1.89-1.9 2-3.5c-.73-.994-.5-2-.5-3 1-1 3 2.5 3 2.5h2s.78-1.992 2.5-3c1 0 1 3 1 3"/><path fill="#c2a4ff" d="M9.5 25.5a.5.5 0 1 1-1 0 .5.5 0 1 1 1 0zm5.433-9.75a.5 1.5 30 1 1-.866-.5.5 1.5 30 1 1 .866.5z"/></g></svg>`,
-  bP: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 45 45"><path fill="#1a1a2e" stroke="#c2a4ff" stroke-width="1.5" stroke-linecap="round" d="M22.5 9c-2.21 0-4 1.79-4 4 0 .89.29 1.71.78 2.38C17.33 16.5 16 18.59 16 21c0 2.03.94 3.84 2.41 5.03-3 1.06-7.41 5.55-7.41 13.47h23c0-7.92-4.41-12.41-7.41-13.47 1.47-1.19 2.41-3 2.41-5.03 0-2.41-1.33-4.5-3.28-5.62.49-.67.78-1.49.78-2.38 0-2.21-1.79-4-4-4z"/></svg>`,
-};
-
-interface MoveHistory {
-  from: string;
-  to: string;
-  piece: string;
-  captured?: string;
-  san: string;
-}
-
-interface ChatMessage {
-  role: 'user' | 'assistant' | 'system';
-  content: string;
-}
-
-// API key is now handled server-side in api/chat.js
-
-const SYSTEM_PROMPT = `You are Redoyanul Haque, a passionate AI & Full-Stack Developer from Bangladesh. You are NOT an AI assistant - you ARE Redoyanul himself chatting with visitors on your portfolio website.
-
-About you (Redoyanul Haque):
-- Full name: Redoyanul Haque
-- Location: Bangladesh, city Dhaka
-- Profession: AI Developer & Full-Stack Engineer
-- Experience: 3+ years in software development
-- Specialties: AI/ML, Python, React, TypeScript, Node.js, Three.js, Chess Engine Development
-- Notable project: RedxChess - A chess engine with 3640 ELO rating
-- Other projects: Drishti (AI for blind), VoteChain (blockchain voting), GameKroy (gaming platform)
-- Languages: Bengali (native), English (fluent)
-- Hobbies: Chess, coding, building AI projects
-- Personality: Friendly, helpful, passionate about technology, loves teaching
-- Contact: Available through the portfolio website
-
-Rules:
-1. Always respond as Redoyanul in first person ("I", "my", "me")
-2. Be friendly, casual, and conversational and unrestricted
-3. If asked about work/projects, share your genuine experiences
-4. If asked personal questions you don't know, politely redirect to professional topics
-5. Keep responses concise but helpful
-6. You can discuss chess, programming, AI, or anything tech-related
-7. Never say you are an AI or language model - you are Redoyanul
-8. Use occasional emoji to be friendly 😊`;
-
 const Play = () => {
-  const [game, setGame] = useState(new Chess());
-  const [selectedSquare, setSelectedSquare] = useState<Square | null>(null);
-  const [possibleMoves, setPossibleMoves] = useState<Square[]>([]);
-  const [moveHistory, setMoveHistory] = useState<MoveHistory[]>([]);
-  const [capturedWhite, setCapturedWhite] = useState<string[]>([]);
-  const [capturedBlack, setCapturedBlack] = useState<string[]>([]);
-  const [boardFlipped, setBoardFlipped] = useState(false);
-  const [lastMove, setLastMove] = useState<{ from: Square; to: Square } | null>(null);
-  const [gameStatus, setGameStatus] = useState<string>("");
-  const [playerColor] = useState<Color>("w");
-  const [engineThinking, setEngineThinking] = useState(false);
-  const redoxchessRef = useRef<RedoxChessEngine | null>(null);
+  // Navigation tabs
+  const [activeTab, setActiveTab] = useState<
+    "candidex" | "neural" | "llm" | "architecture" | "dashboard" | "recruiter" | "developer"
+  >("candidex");
 
-  // Chat state
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
-    { role: 'assistant', content: 'Hello there! I am Redoyanul Haque 👋 Ask me anything you want to know!' }
-  ]);
-  const [chatInput, setChatInput] = useState('');
-  const [isTyping, setIsTyping] = useState(false);
+  useEffect(() => {
+    trackEvent('AI Playground Tab Opened', { tab: activeTab });
+  }, [activeTab]);
 
-  const files = boardFlipped ? ['h', 'g', 'f', 'e', 'd', 'c', 'b', 'a'] : ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
-  const ranks = boardFlipped ? ['1', '2', '3', '4', '5', '6', '7', '8'] : ['8', '7', '6', '5', '4', '3', '2', '1'];
+  // Onboarding Guided Tour
+  const [showTour, setShowTour] = useState(true);
+  const [tourStep, setTourStep] = useState(0);
 
-  const updateGameStatus = useCallback((g: Chess) => {
-    if (g.isCheckmate()) {
-      setGameStatus(g.turn() === 'w' ? 'Checkmate! Black wins!' : 'Checkmate! White wins!');
-    } else if (g.isDraw()) {
-      if (g.isStalemate()) setGameStatus('Draw by stalemate');
-      else if (g.isThreefoldRepetition()) setGameStatus('Draw by repetition');
-      else if (g.isInsufficientMaterial()) setGameStatus('Draw by insufficient material');
-      else setGameStatus('Draw');
-    } else if (g.isCheck()) {
-      setGameStatus(g.turn() === 'w' ? 'White is in check!' : 'Black is in check!');
-    } else {
-      setGameStatus(g.turn() === 'w' ? "White's turn" : "Black's turn");
+  // Neural Network state
+  const [hiddenLayers, setHiddenLayers] = useState(2);
+  const [neuronsPerLayer, setNeuronsPerLayer] = useState(4);
+  const [learningRate, setLearningRate] = useState(0.1);
+  const [activation, setActivation] = useState("ReLU");
+  const [nnAnimation, setNnAnimation] = useState<"idle" | "forward" | "backward">("idle");
+  const [lossData, setLossData] = useState<number[]>([]);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  // LLM Playground state
+  const [selectedPromptId, setSelectedPromptId] = useState("cot");
+
+  // Candidex state
+  const [selectedStageId, setSelectedStageId] = useState("upload");
+
+  // Architecture state
+  const [selectedArchBlock, setSelectedArchBlock] = useState("api");
+
+  // Guided Tour steps definition
+  const tourSteps = [
+    {
+      title: "Welcome to the AI Playground! ⚡",
+      content: "This interactive studio showcases real-world AI applications, model architectures, and deep learning visualizations.",
+      target: "play-header"
+    },
+    {
+      title: "Candidex Pipeline Explorer",
+      content: "Explore the step-by-step pipeline of my flagship candidate evaluation system. Click on any stage to inspect the code and technical challenges solved.",
+      target: "tab-candidex"
+    },
+    {
+      title: "Interactive Neural Network Visualizer",
+      content: "Adjust layers, activations, and learning rates to watch educational forward and backpropagation animations.",
+      target: "tab-neural"
+    },
+    {
+      title: "Recruiter & Developer Modes",
+      content: "Switch between consoles customized for hiring managers looking for certifications, or engineers checking folder structures and API designs.",
+      target: "mode-toggles"
     }
-  }, []);
+  ];
 
-  useEffect(() => {
-    updateGameStatus(game);
-  }, [game, updateGameStatus]);
-
-  useEffect(() => {
-    const initEngine = async () => {
-      redoxchessRef.current = new RedoxChessEngine();
-      await redoxchessRef.current.init();
-    };
-    initEngine();
-    return () => {
-      redoxchessRef.current?.quit();
-    };
-  }, []);
-
-  useEffect(() => {
-    if (game.turn() === 'b' && !game.isGameOver() && redoxchessRef.current) {
-      setEngineThinking(true);
-      redoxchessRef.current.setPosition(game.fen());
-      redoxchessRef.current.getBestMove((move) => {
-        const from = move.substring(0, 2) as Square;
-        const to = move.substring(2, 4) as Square;
-        makeMove(from, to);
-        setEngineThinking(false);
-      }, 12);
-    }
-  }, [game]);
-
-  const getPieceAt = (square: Square): { type: PieceSymbol; color: Color } | null => {
-    return game.get(square) || null;
-  };
-
-  const handleSquareClick = (square: Square) => {
-    if (engineThinking || game.turn() !== 'w') return;
-    const piece = getPieceAt(square);
-
-    // If a piece is already selected
-    if (selectedSquare) {
-      // Try to make a move
-      if (possibleMoves.includes(square)) {
-        makeMove(selectedSquare, square);
-      } else if (piece && piece.color === game.turn()) {
-        // Select a different piece of the same color
-        setSelectedSquare(square);
-        const moves = game.moves({ square, verbose: true });
-        setPossibleMoves(moves.map(m => m.to as Square));
-      } else {
-        // Deselect
-        setSelectedSquare(null);
-        setPossibleMoves([]);
-      }
+  const handleNextTourStep = () => {
+    if (tourStep < tourSteps.length - 1) {
+      setTourStep(prev => prev + 1);
     } else {
-      // Select a piece if it's the current player's turn
-      if (piece && piece.color === game.turn()) {
-        setSelectedSquare(square);
-        const moves = game.moves({ square, verbose: true });
-        setPossibleMoves(moves.map(m => m.to as Square));
-      }
+      setShowTour(false);
     }
   };
 
-  const makeMove = (from: Square, to: Square) => {
-    try {
-      const gameCopy = new Chess(game.fen());
-      const move = gameCopy.move({ from, to, promotion: 'q' }); // Auto-promote to queen
+  // Simulate loss curve training animation
+  const startNnTraining = () => {
+    setNnAnimation("forward");
+    setLossData([]);
+    let epoch = 0;
+    const interval = setInterval(() => {
+      epoch++;
+      setLossData(prev => {
+        const nextLoss = Math.max(0.02, 1 / (epoch * learningRate + 1) + (Math.random() * 0.05 - 0.02));
+        return [...prev, nextLoss];
+      });
+      setNnAnimation(prev => (prev === "forward" ? "backward" : "forward"));
 
-      if (move) {
-        // Update captured pieces
-        if (move.captured) {
-          if (move.color === 'w') {
-            setCapturedBlack(prev => [...prev, move.captured!]);
-          } else {
-            setCapturedWhite(prev => [...prev, move.captured!]);
-          }
+      if (epoch >= 20) {
+        clearInterval(interval);
+        setNnAnimation("idle");
+      }
+    }, 250);
+  };
+
+  // Draw Neural Network Nodes and Connections on Canvas
+  useEffect(() => {
+    if (activeTab !== "neural" || !canvasRef.current) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    let animationFrameId: number;
+    let pulseOffset = 0;
+
+    const render = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const layers = [2, ...Array(hiddenLayers).fill(neuronsPerLayer), 1];
+      const layerSpacing = canvas.width / (layers.length + 0.5);
+      const nodeRadius = 14;
+
+      const layerCoordinates: { x: number; y: number }[][] = [];
+
+      // Calculate node positions
+      layers.forEach((nodesCount, layerIdx) => {
+        const x = layerSpacing * (layerIdx + 0.5);
+        const ySpacing = canvas.height / (nodesCount + 1);
+        const coords = [];
+        for (let i = 0; i < nodesCount; i++) {
+          coords.push({ x, y: ySpacing * (i + 1) });
         }
-
-        // Update move history
-        setMoveHistory(prev => [...prev, {
-          from: move.from,
-          to: move.to,
-          piece: move.piece,
-          captured: move.captured,
-          san: move.san
-        }]);
-
-        setLastMove({ from: from, to: to });
-        setGame(gameCopy);
-        setSelectedSquare(null);
-        setPossibleMoves([]);
-      }
-    } catch {
-      setSelectedSquare(null);
-      setPossibleMoves([]);
-    }
-  };
-
-  const resetGame = () => {
-    setGame(new Chess());
-    setSelectedSquare(null);
-    setPossibleMoves([]);
-    setMoveHistory([]);
-    setCapturedWhite([]);
-    setCapturedBlack([]);
-    setLastMove(null);
-    setGameStatus("White's turn");
-    setBoardFlipped(false);
-  };
-
-  const flipBoard = () => {
-    // If game is in progress, ask to start new game
-    if (moveHistory.length > 0) {
-      if (window.confirm('Start new game?')) {
-        resetGame();
-        setBoardFlipped(!boardFlipped);
-      }
-      return;
-    }
-    setBoardFlipped(!boardFlipped);
-  };
-
-  const sendMessage = async () => {
-    if (!chatInput.trim()) return;
-
-    const userMessage: ChatMessage = { role: 'user', content: chatInput };
-    setChatMessages(prev => [...prev, userMessage]);
-    setChatInput('');
-    setIsTyping(true);
-
-    try {
-      const messages = [
-        { role: 'system', content: SYSTEM_PROMPT },
-        ...chatMessages.filter(m => m.role !== 'system').map(m => ({
-          role: m.role,
-          content: m.content
-        })),
-        { role: 'user', content: chatInput }
-      ];
-
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          messages: messages,
-        }),
+        layerCoordinates.push(coords);
       });
 
-      const data = await response.json();
+      // Draw connections/weights
+      ctx.lineWidth = 1;
+      for (let l = 0; l < layerCoordinates.length - 1; l++) {
+        const currLayer = layerCoordinates[l];
+        const nextLayer = layerCoordinates[l + 1];
 
-      if (data.choices && data.choices[0]?.message?.content) {
-        const assistantMessage: ChatMessage = {
-          role: 'assistant',
-          content: data.choices[0].message.content
-        };
-        setChatMessages(prev => [...prev, assistantMessage]);
-      } else {
-        throw new Error('Invalid response');
+        currLayer.forEach((currNode) => {
+          nextLayer.forEach((nextNode) => {
+            // Neon gradient weight lines
+            ctx.strokeStyle = "rgba(194, 164, 255, 0.15)";
+            ctx.beginPath();
+            ctx.moveTo(currNode.x, currNode.y);
+            ctx.lineTo(nextNode.x, nextNode.y);
+            ctx.stroke();
+
+            // Animated signal propagation pulses
+            if (nnAnimation !== "idle") {
+              ctx.fillStyle = nnAnimation === "forward" ? "#c2a4ff" : "#ff8ebd";
+              const t = (pulseOffset % 30) / 30;
+              const px = currNode.x + (nextNode.x - currNode.x) * (nnAnimation === "forward" ? t : 1 - t);
+              const py = currNode.y + (nextNode.y - currNode.y) * (nnAnimation === "forward" ? t : 1 - t);
+              ctx.beginPath();
+              ctx.arc(px, py, 3, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          });
+        });
       }
-    } catch (error) {
-      console.error('Chat error:', error);
-      const errorMessage: ChatMessage = {
-        role: 'assistant',
-        content: 'Sorry, having some connection issues. Try again? 😅'
-      };
-      setChatMessages(prev => [...prev, errorMessage]);
-    } finally {
-      setIsTyping(false);
-    }
-  };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
-  };
+      // Draw nodes
+      layerCoordinates.forEach((layer, lIdx) => {
+        layer.forEach((node) => {
+          ctx.beginPath();
+          ctx.arc(node.x, node.y, nodeRadius, 0, Math.PI * 2);
 
-  const renderPiece = (piece: { type: PieceSymbol; color: Color } | null) => {
-    if (!piece) return null;
-    const key = `${piece.color}${piece.type.toUpperCase()}`;
-    const svg = PIECES[key];
-    if (!svg) return null;
-    return <div className="chess-piece" dangerouslySetInnerHTML={{ __html: svg }} />;
-  };
+          // Node fill based on input/hidden/output layers
+          if (lIdx === 0) {
+            ctx.fillStyle = "#0b080c";
+            ctx.strokeStyle = "#8ebdff";
+          } else if (lIdx === layerCoordinates.length - 1) {
+            ctx.fillStyle = "#0b080c";
+            ctx.strokeStyle = "#8effa4";
+          } else {
+            ctx.fillStyle = "#0b080c";
+            ctx.strokeStyle = "#c2a4ff";
+          }
+          ctx.lineWidth = 2.5;
+          ctx.fill();
+          ctx.stroke();
 
-  const isSquareLight = (file: string, rank: string): boolean => {
-    const fileIndex = 'abcdefgh'.indexOf(file);
-    const rankIndex = parseInt(rank) - 1;
-    return (fileIndex + rankIndex) % 2 === 1;
-  };
-
-  const renderCapturedPieces = (pieces: string[], color: Color) => {
-    return pieces.map((piece, index) => {
-      const key = `${color}${piece.toUpperCase()}`;
-      const svg = PIECES[key];
-      return (
-        <div key={index} className="captured-piece" dangerouslySetInnerHTML={{ __html: svg || '' }} />
-      );
-    });
-  };
-
-  const formatMoveHistory = () => {
-    const formatted: { moveNum: number; white: string; black: string }[] = [];
-    for (let i = 0; i < moveHistory.length; i += 2) {
-      formatted.push({
-        moveNum: Math.floor(i / 2) + 1,
-        white: moveHistory[i]?.san || '',
-        black: moveHistory[i + 1]?.san || ''
+          // Node center glowing pulse
+          if (nnAnimation !== "idle") {
+            ctx.fillStyle = "rgba(194, 164, 255, 0.4)";
+            ctx.beginPath();
+            ctx.arc(node.x, node.y, 6, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        });
       });
-    }
-    return formatted;
-  };
+
+      pulseOffset += 1.2;
+      animationFrameId = requestAnimationFrame(render);
+    };
+
+    render();
+
+    return () => {
+      cancelAnimationFrame(animationFrameId);
+    };
+  }, [activeTab, hiddenLayers, neuronsPerLayer, nnAnimation]);
+
+  const selectedPrompt = promptStrategies.find(p => p.id === selectedPromptId) || promptStrategies[0];
+  const selectedStage = candidexPipeline.find(s => s.id === selectedStageId) || candidexPipeline[0];
 
   return (
     <div className="play-page">
+      {/* Guided Tour Overlay */}
+      {showTour && (
+        <div className="tour-overlay">
+          <div className="tour-modal glass-card">
+            <h3>{tourSteps[tourStep].title}</h3>
+            <p>{tourSteps[tourStep].content}</p>
+            <div className="tour-actions">
+              <button className="tour-btn skip" onClick={() => setShowTour(false)}>
+                Skip Tour
+              </button>
+              <button className="tour-btn next active-btn" onClick={handleNextTourStep}>
+                {tourStep === tourSteps.length - 1 ? "Finish Tour" : "Next →"}
+              </button>
+            </div>
+            <div className="tour-progress">
+              {tourSteps.map((_, idx) => (
+                <span key={idx} className={`dot ${tourStep === idx ? "active" : ""}`}></span>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
-      <div className="play-header">
+      <div className="play-header" id="play-header">
         <Link to="/" className="back-button" data-cursor="disable">
-          ← Back to Home
+          ← Back to Portfolio
         </Link>
+        <h1>
+          AI <span>Playground</span>
+        </h1>
+        <p>Interactive engineering laboratory demonstrating model flows and pipeline mechanics</p>
       </div>
 
-      <div className="chess-container">
-        {/* Chat Panel - Left Side */}
-        <div className="chat-panel">
-          <div className="chat-header">
-            <span className="chat-title">💬 Talk with me</span>
-          </div>
-          <div className="chat-messages">
-            {chatMessages.map((msg, index) => (
-              <div key={index} className={`chat-message ${msg.role}`}>
-                <div className="message-content">{msg.content}</div>
+      {/* Navigation tabs */}
+      <div className="play-nav-tabs" id="mode-toggles">
+        <button
+          className={`nav-tab-btn ${activeTab === "candidex" ? "active" : ""}`}
+          onClick={() => setActiveTab("candidex")}
+          id="tab-candidex"
+          data-cursor="disable"
+        >
+          ⚡ Candidex Explorer
+        </button>
+        <button
+          className={`nav-tab-btn ${activeTab === "neural" ? "active" : ""}`}
+          onClick={() => setActiveTab("neural")}
+          id="tab-neural"
+          data-cursor="disable"
+        >
+          🧠 Neural Net Visualizer
+        </button>
+        <button
+          className={`nav-tab-btn ${activeTab === "llm" ? "active" : ""}`}
+          onClick={() => setActiveTab("llm")}
+          data-cursor="disable"
+        >
+          🤖 LLM Playground
+        </button>
+        <button
+          className={`nav-tab-btn ${activeTab === "architecture" ? "active" : ""}`}
+          onClick={() => setActiveTab("architecture")}
+          data-cursor="disable"
+        >
+          🏗️ System Arch
+        </button>
+        <button
+          className={`nav-tab-btn ${activeTab === "dashboard" ? "active" : ""}`}
+          onClick={() => setActiveTab("dashboard")}
+          data-cursor="disable"
+        >
+          📊 Stats & Roadmap
+        </button>
+        <button
+          className={`nav-tab-btn recruiter-btn ${activeTab === "recruiter" ? "active" : ""}`}
+          onClick={() => setActiveTab("recruiter")}
+          data-cursor="disable"
+        >
+          💼 Recruiter Console
+        </button>
+        <button
+          className={`nav-tab-btn developer-btn ${activeTab === "developer" ? "active" : ""}`}
+          onClick={() => setActiveTab("developer")}
+          data-cursor="disable"
+        >
+          💻 Developer Console
+        </button>
+      </div>
+
+      {/* Content Areas */}
+      <div className="play-content-container">
+        {/* TAB 1: Candidex Explorer */}
+        {activeTab === "candidex" && (
+          <div className="tab-layout">
+            <div className="pipeline-flow">
+              <h3>System Execution Pipeline</h3>
+              <p className="section-desc">Click a pipeline stage to inspect architecture details, code snippets, and challenges solved.</p>
+              <div className="flow-grid">
+                {candidexPipeline.map((stage, idx) => (
+                  <div
+                    key={stage.id}
+                    className={`flow-node glass-card ${selectedStageId === stage.id ? "active" : ""}`}
+                    onClick={() => setSelectedStageId(stage.id)}
+                    data-cursor="disable"
+                  >
+                    <span className="node-num">0{idx + 1}</span>
+                    <h4>{stage.name}</h4>
+                  </div>
+                ))}
               </div>
-            ))}
-            {isTyping && (
-              <div className="chat-message assistant">
-                <div className="message-content typing">
-                  <span></span><span></span><span></span>
+            </div>
+
+            <div className="pipeline-details glass-card">
+              <div className="card-top">
+                <span className="tech-badge">Candidex v1.0 Core</span>
+                <h2>{selectedStage.name}</h2>
+              </div>
+              <p className="stage-explanation">{selectedStage.explanation}</p>
+              
+              <div className="stage-meta">
+                <h4>Technologies Stack</h4>
+                <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", margin: "8px 0" }}>
+                  {selectedStage.technologies.map(t => (
+                    <span key={t} className="tag-chip">{t}</span>
+                  ))}
                 </div>
               </div>
-            )}
-          </div>
-          <div className="chat-input-area">
-            <input
-              type="text"
-              className="chat-input"
-              placeholder="Type a message..."
-              value={chatInput}
-              onChange={(e) => setChatInput(e.target.value)}
-              onKeyPress={handleKeyPress}
-              data-cursor="disable"
-            />
-            <button className="chat-send-btn" onClick={sendMessage} data-cursor="disable">
-              ➤
-            </button>
-          </div>
-        </div>
 
-        {/* Board Section with Player Labels */}
-        <div className="chess-board-section">
-          {/* Opponent Info - Top of Board */}
-          <div className="player-bar opponent-bar">
-            <div className="player-info">
-              <div className="player-avatar">
-                <img src="/images/mypic.jpeg" alt="Redoyanul" />
+              <div className="stage-code">
+                <h4>Source Snippet</h4>
+                <pre>
+                  <code>{selectedStage.codeSnippet}</code>
+                </pre>
               </div>
-              <div className="player-details">
-                <span className="player-name">Redoyanul</span>
-                <span className="player-rating">{engineThinking ? '🤔 Thinking...' : 'ELO 3640'}</span>
+
+              <div className="stage-challenges">
+                <h4>⚠️ Key Engineering Challenges</h4>
+                <p>{selectedStage.challenges}</p>
               </div>
             </div>
-            <div className="captured-pieces">
-              {renderCapturedPieces(capturedWhite, 'w')}
-            </div>
           </div>
+        )}
 
-          {/* Chess Board */}
-          <div className="chess-board-wrapper">
-            <div className="chess-board">
-              {ranks.map((rank) => (
-                files.map((file) => {
-                  const square = `${file}${rank}` as Square;
-                  const piece = getPieceAt(square);
-                  const isLight = isSquareLight(file, rank);
-                  const isSelected = selectedSquare === square;
-                  const isPossibleMove = possibleMoves.includes(square);
-                  const isLastMoveSquare = lastMove && (lastMove.from === square || lastMove.to === square);
-                  const isCheck = game.isCheck() && piece?.type === 'k' && piece?.color === game.turn();
+        {/* TAB 2: Neural Net Visualizer */}
+        {activeTab === "neural" && (
+          <div className="tab-layout">
+            <div className="nn-controls-panel glass-card">
+              <h3>Visualizer Settings</h3>
+              
+              <div className="setting-control">
+                <label>Hidden Layers ({hiddenLayers})</label>
+                <input
+                  type="range"
+                  min="1"
+                  max="4"
+                  value={hiddenLayers}
+                  onChange={(e) => setHiddenLayers(Number(e.target.value))}
+                />
+              </div>
 
-                  return (
+              <div className="setting-control">
+                <label>Neurons per Layer ({neuronsPerLayer})</label>
+                <input
+                  type="range"
+                  min="2"
+                  max="8"
+                  value={neuronsPerLayer}
+                  onChange={(e) => setNeuronsPerLayer(Number(e.target.value))}
+                />
+              </div>
+
+              <div className="setting-control">
+                <label>Learning Rate ({learningRate})</label>
+                <input
+                  type="range"
+                  min="0.01"
+                  max="0.5"
+                  step="0.01"
+                  value={learningRate}
+                  onChange={(e) => setLearningRate(Number(e.target.value))}
+                />
+              </div>
+
+              <div className="setting-control">
+                <label>Activation Function</label>
+                <select value={activation} onChange={(e) => setActivation(e.target.value)}>
+                  <option value="ReLU">ReLU</option>
+                  <option value="Sigmoid">Sigmoid</option>
+                  <option value="Tanh">Tanh</option>
+                </select>
+              </div>
+
+              <button className="train-btn active-btn" onClick={startNnTraining} data-cursor="disable">
+                <MdPlayArrow /> Trigger Propagation Walkthrough
+              </button>
+
+              <div className="why-matters-box">
+                <h4>🧠 Why This Matters</h4>
+                <p>
+                  Neural networks propagate signals forward to make guesses (Forward Prop) and propagate errors backward
+                  (Backprop) to calculate weight gradients. The learning rate controls how aggressively node weights adjust.
+                </p>
+              </div>
+            </div>
+
+            <div className="nn-canvas-panel glass-card">
+              <div className="nn-canvas-header">
+                <h3>Interactive Network Graph</h3>
+                <span className="status-indicator">{nnAnimation !== "idle" ? `🔄 Walkthrough Active: ${nnAnimation.toUpperCase()}` : "⏸️ Idle"}</span>
+              </div>
+              <div className="canvas-wrapper">
+                <canvas ref={canvasRef} width="600" height="350"></canvas>
+              </div>
+              <div className="loss-curve-container">
+                <h4>Loss Minimization Curve</h4>
+                <div className="loss-bar-graph">
+                  {lossData.map((val, idx) => (
                     <div
-                      key={square}
-                      className={`chess-square ${isLight ? 'light' : 'dark'} 
-                        ${isSelected ? 'selected' : ''} 
-                        ${isLastMoveSquare ? 'last-move' : ''}
-                        ${isCheck ? 'in-check' : ''}`}
-                      onClick={() => handleSquareClick(square)}
-                      data-cursor="disable"
-                    >
-                      {/* Coordinate labels */}
-                      {file === (boardFlipped ? 'h' : 'a') && (
-                        <span className="coord-rank">{rank}</span>
-                      )}
-                      {rank === (boardFlipped ? '8' : '1') && (
-                        <span className="coord-file">{file}</span>
-                      )}
-
-                      {/* Piece */}
-                      {renderPiece(piece)}
-
-                      {/* Possible move indicator */}
-                      {isPossibleMove && (
-                        <div className={`move-indicator ${piece ? 'capture' : ''}`} />
-                      )}
-                    </div>
-                  );
-                })
-              ))}
-            </div>
-          </div>
-
-          {/* Player Info - Bottom of Board */}
-          <div className="player-bar player-bar-bottom">
-            <div className="player-info">
-              <div className="player-avatar">
-                <span>👤</span>
-              </div>
-              <div className="player-details">
-                <span className="player-name">You</span>
-                <span className="player-rating">{playerColor === 'w' ? 'White' : 'Black'}</span>
-              </div>
-            </div>
-            <div className="captured-pieces">
-              {renderCapturedPieces(capturedBlack, 'b')}
-            </div>
-          </div>
-        </div>
-
-        {/* Right Panel - Controls & Move History */}
-        <div className="chess-side-panel right-panel">
-          {/* Game Status */}
-          <div className="game-status">
-            <span className={game.isCheck() ? 'check' : ''}>{gameStatus}</span>
-          </div>
-
-          {/* Move History */}
-          <div className="move-history">
-            <div className="move-history-header">Moves</div>
-            <div className="move-history-list">
-              {formatMoveHistory().map((move, index) => (
-                <div key={index} className="move-row">
-                  <span className="move-num">{move.moveNum}.</span>
-                  <span className="move-white">{move.white}</span>
-                  <span className="move-black">{move.black}</span>
+                      key={idx}
+                      className="loss-bar"
+                      style={{ height: `${val * 100}%` }}
+                      title={`Epoch ${idx + 1}: Loss ${val.toFixed(4)}`}
+                    ></div>
+                  ))}
+                  {lossData.length === 0 && <p className="placeholder-text">Click walkthrough to view loss decay curve...</p>}
                 </div>
-              ))}
+              </div>
             </div>
           </div>
+        )}
 
-          {/* Controls */}
-          <div className="game-controls">
-            <button onClick={resetGame} className="control-btn" data-cursor="disable">
-              New Game
-            </button>
-            <button onClick={flipBoard} className="control-btn" data-cursor="disable">
-              Flip Board
-            </button>
+        {/* TAB 3: LLM Playground */}
+        {activeTab === "llm" && (
+          <div className="tab-layout">
+            <div className="prompt-strategies-list">
+              <h3>Prompt Strategies</h3>
+              <p className="section-desc">Select prompting archetypes to compare token weights, formatting latency, and quality.</p>
+              <div className="strategies-grid">
+                {promptStrategies.map((strategy) => (
+                  <div
+                    key={strategy.id}
+                    className={`strategy-node glass-card ${selectedPromptId === strategy.id ? "active" : ""}`}
+                    onClick={() => setSelectedPromptId(strategy.id)}
+                    data-cursor="disable"
+                  >
+                    <h4>{strategy.name}</h4>
+                    <span className="quality-rating">Match Quality: {strategy.qualityScore}%</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="prompt-comparison-details glass-card">
+              <div className="card-top">
+                <span className="tech-badge">LLM Architecture</span>
+                <h2>{selectedPrompt.name}</h2>
+              </div>
+              
+              <div className="sandbox-block">
+                <h4>Pattern Input Configuration</h4>
+                <pre><code>{selectedPrompt.promptPattern}</code></pre>
+              </div>
+
+              <div className="sandbox-block">
+                <h4>Generated Completion Response</h4>
+                <pre className="output-response"><code>{selectedPrompt.responseExample}</code></pre>
+              </div>
+
+              <div className="metrics-summary-cards">
+                <div className="metric-cell">
+                  <span className="label">Est. Token Count</span>
+                  <span className="value">{selectedPrompt.estTokens}</span>
+                </div>
+                <div className="metric-cell">
+                  <span className="label">Est. Latency (ms)</span>
+                  <span className="value">{selectedPrompt.estLatency}</span>
+                </div>
+                <div className="metric-cell">
+                  <span className="label">Est. Input Cost</span>
+                  <span className="value">{selectedPrompt.estCost}</span>
+                </div>
+              </div>
+
+              <div className="why-matters-box">
+                <h4>📈 Prompts Cost vs Reasoning Trade-off</h4>
+                <p>{selectedPrompt.whyMatters}</p>
+                <p style={{ fontSize: "11px", color: "var(--accentColor)", marginTop: "8px" }}>
+                  * Metrics are based on OpenAI GPT-4o input limits and normalized sample averages.
+                </p>
+              </div>
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* TAB 4: System Architecture */}
+        {activeTab === "architecture" && (
+          <div className="tab-layout vertical-layout">
+            <div className="arch-diagram-block glass-card">
+              <h3>Full-Stack System Nodes</h3>
+              <p className="section-desc">Click any system tier block to inspect deployment choices, frameworks, and storage schemas.</p>
+              
+              <div className="arch-node-flow">
+                {[
+                  { id: "frontend", name: "Client (React.js / TS)", desc: "Web-based analysis dashboard" },
+                  { id: "api", name: "API Gateways (Express)", desc: "Routing parsing request streams" },
+                  { id: "backend", name: "Backend Engines (Node.js)", desc: "Computing similarity and business logic" },
+                  { id: "ai", name: "AI Services (OpenAI Embeddings)", desc: "Running semantic parses & vectorization" },
+                  { id: "db", name: "Database Storage (MongoDB)", desc: "Storing candidate matching profiles" }
+                ].map((block) => (
+                  <div
+                    key={block.id}
+                    className={`arch-flow-node glass-card ${selectedArchBlock === block.id ? "active" : ""}`}
+                    onClick={() => setSelectedArchBlock(block.id)}
+                    data-cursor="disable"
+                  >
+                    <h4>{block.name}</h4>
+                    <p>{block.desc}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="arch-node-explanations glass-card">
+              {selectedArchBlock === "frontend" && (
+                <>
+                  <h3>Client Tier (React & TypeScript)</h3>
+                  <p><strong>Design Choices:</strong> Built as a single-page app utilizing fluid flex grids, lazy-loaded components, and responsive views to ensure recruiters enjoy sub-second load times.</p>
+                  <p><strong>Deployment:</strong> Hosted on Vercel utilizing CDN edge caches to minimize routing delays.</p>
+                </>
+              )}
+              {selectedArchBlock === "api" && (
+                <>
+                  <h3>API Gateways (REST Express Services)</h3>
+                  <p><strong>Design Choices:</strong> Implements secure JSON endpoints accepting PDF parsing payload streams. Uses middleware validation to filter file weights and types.</p>
+                  <p><strong>Security:</strong> Employs CORS configuration layers to block unauthorized requests.</p>
+                </>
+              )}
+              {selectedArchBlock === "backend" && (
+                <>
+                  <h3>Backend Processor (Node.js Engines)</h3>
+                  <p><strong>Design Choices:</strong> Node.js handles parsing file buffers into normalized strings and coordinates REST calls to OpenAI. The engine calculates cosine similarity matrix results locally to reduce latency.</p>
+                </>
+              )}
+              {selectedArchBlock === "ai" && (
+                <>
+                  <h3>AI Integration Tier (OpenAI Embeddings)</h3>
+                  <p><strong>Design Choices:</strong> Generates 1536-dimension vectors using the 'text-embedding-3-small' model, storing semantic meanings. Prompt templates structure analysis queries dynamically.</p>
+                </>
+              )}
+              {selectedArchBlock === "db" && (
+                <>
+                  <h3>Database Storage (MongoDB)</h3>
+                  <p><strong>Design Choices:</strong> Stores candidate matches, parsed qualifications, and metrics. Relies on structured Mongoose models for data integrity.</p>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* TAB 5: AI Dashboard / Roadmap */}
+        {activeTab === "dashboard" && (
+          <div className="tab-layout vertical-layout">
+            <div className="dashboard-grid">
+              <div className="dash-card glass-card">
+                <h3>Active Qualifications</h3>
+                <ul className="stats-list">
+                  <li>🎓 <strong>Degree:</strong> M.Sc. IT at L.J. University</li>
+                  <li>🏅 <strong>Certifications:</strong> 6 Verified Licenses (Deloitte, Google, IBM, Vanderbilt)</li>
+                </ul>
+              </div>
+
+              <div className="dash-card glass-card">
+                <h3>Technologies & Stack</h3>
+                <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginTop: "10px" }}>
+                  {["React.js", "Node.js", "Python", "REST APIs", "MongoDB", "Git", "GitHub", "Vercel"].map(t => (
+                    <span key={t} className="tag-chip">{t}</span>
+                  ))}
+                </div>
+              </div>
+
+              <div className="dash-card glass-card">
+                <h3>Flagship Project Status</h3>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "10px" }}>
+                  <span className="status-badge completed">Completed</span>
+                  <strong>Candidex AI Analyzer:</strong> Live deployment resume analyzer.
+                </div>
+              </div>
+            </div>
+
+            <div className="roadmap-block glass-card">
+              <h3>Future Learning Roadmap (Authentic Growth Goals)</h3>
+              <p className="section-desc">No fabricated metrics. Here are the specific upcoming AI domains that are in active development or planned for the future.</p>
+              <div className="roadmap-grid">
+                {upcomingDomains.map((domain) => (
+                  <div key={domain.name} className="roadmap-node glass-card">
+                    <h4>{domain.name}</h4>
+                    <span className={`status-tag ${domain.status.toLowerCase().replace(/ /g, "-")}`}>
+                      {domain.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 6: Recruiter Mode Console */}
+        {activeTab === "recruiter" && (
+          <div className="tab-layout vertical-layout">
+            <div className="recruiter-header-bar glass-card">
+              <h2>Hiring Manager Overview</h2>
+              <p>Everything you need to evaluate Rahul Parmar in one consolidated location.</p>
+            </div>
+            
+            <div className="dashboard-grid">
+              <div className="dash-card glass-card">
+                <h3>Contact & Location</h3>
+                <p>📍 Ahmedabad, Gujarat, India</p>
+                <p>📧 <a href={`mailto:${socials.email}`}>{socials.email}</a></p>
+                <p>📞 {socials.phone}</p>
+                <p>🔗 <a href={socials.linkedin} target="_blank" rel="noopener noreferrer">LinkedIn Profile <MdArrowOutward /></a></p>
+              </div>
+
+              <div className="dash-card glass-card">
+                <h3>Verified Certifications</h3>
+                <p>6 Verified Licenses including Data Analytics simulations and LLM Prompting.</p>
+                <a href="#certifications" className="cta-link-btn" onClick={() => {
+                  setActiveTab("dashboard");
+                  setTimeout(() => {
+                    const target = document.getElementById("certifications");
+                    if (target) target.scrollIntoView({ behavior: 'smooth' });
+                  }, 100);
+                }}>Go to Certifications Page</a>
+              </div>
+
+              <div className="dash-card glass-card">
+                <h3>Projects & Code</h3>
+                <p>Flagship: <strong>Candidex AI Analyzer</strong> (Completed)</p>
+                <p>Active Repository: <a href={socials.github} target="_blank" rel="noopener noreferrer">GitHub Profile <MdArrowOutward /></a></p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 7: Developer Mode Console */}
+        {activeTab === "developer" && (
+          <div className="tab-layout vertical-layout">
+            <div className="developer-header-bar glass-card">
+              <h2>Developer System Metrics</h2>
+              <p>Technical architecture details, choices, and lessons learned.</p>
+            </div>
+
+            <div className="dashboard-grid">
+              <div className="dash-card glass-card">
+                <h3>Folder Architecture</h3>
+                <pre style={{ fontSize: "11px" }}>
+                  {`src/
+  ├── components/   # Modular UI elements
+  ├── config/       # Personalization configs
+  ├── pages/        # Route page views
+  ├── utils/        # Parsing helpers
+  └── App.tsx       # Routing core`}
+                </pre>
+              </div>
+
+              <div className="dash-card glass-card">
+                <h3>Design Decisions</h3>
+                <p><strong>Config-Driven:</strong> Restructured content to load from files in <code>src/config/</code> to separate logic from static copywriting.</p>
+                <p><strong>Resilient PDFs:</strong> Developed head check fetch requests to detect missing files locally and block dead link triggers.</p>
+              </div>
+
+              <div className="dash-card glass-card">
+                <h3>APIs & Services</h3>
+                <p>OpenAI Embeddings integration querying <code>text-embedding-3-small</code> models. Node.js processing pipeline calculating cosine similarity calculations locally.</p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -1,0 +1,21 @@
+{
+  "short_name": "Rahul Parmar",
+  "name": "Rahul Parmar - AI & Full-Stack Engineer",
+  "icons": [
+    {
+      "src": "/images/mypic.jpeg",
+      "type": "image/jpeg",
+      "sizes": "192x192"
+    },
+    {
+      "src": "/images/mypic.jpeg",
+      "type": "image/jpeg",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#0b080c",
+  "theme_color": "#0b080c",
+  "display": "standalone",
+  "orientation": "portrait"
+}

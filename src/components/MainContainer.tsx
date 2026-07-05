@@ -10,6 +10,8 @@ import WhatIDo from "./WhatIDo";
 import Work from "./Work";
 import TechStackNew from "./TechStackNew";
 import CallToAction from "./CallToAction";
+import Certifications from "./Certifications";
+import Education from "./Education";
 import setSplitText from "./utils/splitText";
 
 const MainContainer = ({ children }: PropsWithChildren) => {
@@ -41,6 +43,8 @@ const MainContainer = ({ children }: PropsWithChildren) => {
         <About />
         <WhatIDo />
         <Career />
+        <Certifications />
+        <Education />
         <Work />
         <TechStackNew />
         <CallToAction />

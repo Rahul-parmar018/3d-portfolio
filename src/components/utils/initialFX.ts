@@ -1,6 +1,6 @@
 import { TextSplitter } from "../../utils/textSplitter";
 import gsap from "gsap";
-import { lenis } from "../Navbar";
+import { lenis } from "./lenis";
 
 export function initialFX() {
   document.body.style.overflowY = "auto";

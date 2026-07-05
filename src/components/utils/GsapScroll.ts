@@ -149,7 +149,6 @@ export function setAllTimeline() {
       { maxHeight: "100%", duration: 1, ease: "none" },
       0
     )
-
     .fromTo(
       ".career-timeline",
       { opacity: 0 },

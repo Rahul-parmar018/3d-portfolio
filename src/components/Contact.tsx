@@ -4,6 +4,7 @@ import { config } from "../config";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useEffect } from "react";
+import { trackEvent } from "../utils/analytics";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -64,7 +65,7 @@ const Contact = () => {
           <div className="contact-box">
             <h4>Email</h4>
             <p>
-              <a href={`mailto:${config.contact.email}`} data-cursor="disable">
+              <a href={`mailto:${config.contact.email}`} data-cursor="disable" onClick={() => trackEvent('Email Clicked', { source: 'contact_section' })}>
                 {config.contact.email}
               </a>
             </p>
@@ -75,58 +76,73 @@ const Contact = () => {
           </div>
           <div className="contact-box">
             <h4>Social</h4>
-            <a
-              href={config.contact.github}
-              target="_blank"
-              rel="noopener noreferrer"
-              data-cursor="disable"
-              className="contact-social"
-            >
-              Github <MdArrowOutward />
-            </a>
-            <a
-              href={config.contact.linkedin}
-              target="_blank"
-              rel="noopener noreferrer"
-              data-cursor="disable"
-              className="contact-social"
-            >
-              Linkedin <MdArrowOutward />
-            </a>
-            <a
-              href={config.contact.twitter}
-              target="_blank"
-              rel="noopener noreferrer"
-              data-cursor="disable"
-              className="contact-social"
-            >
-              Twitter <MdArrowOutward />
-            </a>
-            <a
-              href={config.contact.facebook}
-              target="_blank"
-              rel="noopener noreferrer"
-              data-cursor="disable"
-              className="contact-social"
-            >
-              Facebook <MdArrowOutward />
-            </a>
-            <a
-              href={config.contact.instagram}
-              target="_blank"
-              rel="noopener noreferrer"
-              data-cursor="disable"
-              className="contact-social"
-            >
-              Instagram <MdArrowOutward />
-            </a>
+            {config.contact.github && (
+              <a
+                href={config.contact.github}
+                target="_blank"
+                rel="noopener noreferrer"
+                data-cursor="disable"
+                className="contact-social"
+                onClick={() => trackEvent('GitHub Clicked', { source: 'contact_section' })}
+              >
+                Github <MdArrowOutward />
+              </a>
+            )}
+            {config.contact.linkedin && (
+              <a
+                href={config.contact.linkedin}
+                target="_blank"
+                rel="noopener noreferrer"
+                data-cursor="disable"
+                className="contact-social"
+                onClick={() => trackEvent('LinkedIn Clicked', { source: 'contact_section' })}
+              >
+                Linkedin <MdArrowOutward />
+              </a>
+            )}
+            {config.contact.twitter && (
+              <a
+                href={config.contact.twitter}
+                target="_blank"
+                rel="noopener noreferrer"
+                data-cursor="disable"
+                className="contact-social"
+                onClick={() => trackEvent('Twitter Clicked', { source: 'contact_section' })}
+              >
+                Twitter <MdArrowOutward />
+              </a>
+            )}
+            {config.contact.facebook && (
+              <a
+                href={config.contact.facebook}
+                target="_blank"
+                rel="noopener noreferrer"
+                data-cursor="disable"
+                className="contact-social"
+                onClick={() => trackEvent('Facebook Clicked', { source: 'contact_section' })}
+              >
+                Facebook <MdArrowOutward />
+              </a>
+            )}
+            {config.contact.instagram && (
+              <a
+                href={config.contact.instagram}
+                target="_blank"
+                rel="noopener noreferrer"
+                data-cursor="disable"
+                className="contact-social"
+                onClick={() => trackEvent('Instagram Clicked', { source: 'contact_section' })}
+              >
+                Instagram <MdArrowOutward />
+              </a>
+            )}
           </div>
           <div className="contact-box">
             <h2>
               Designed and Developed <br /> by <span>{config.developer.fullName}</span>
             </h2>
             <h5>
-              <MdCopyright /> {new Date().getFullYear()}
+              <MdCopyright /> {new Date().getFullYear()} | Portfolio v1.0 (Last Updated: July 2026)
             </h5>
           </div>
         </div>
