@@ -1,99 +1,84 @@
-# 🚀 3D Developer Portfolio Website (React + TypeScript + Three.js)
+# 🚀 3D AI & Full-Stack Developer Portfolio (React + TypeScript + Three.js)
 
-[![3D portfolio preview (click to watch video)](./Screenshot_2026-04-08_22-10-00.png)](./screen-capture%20(13).webm)
+A modern, high-performance **3D AI & Full-Stack Developer Portfolio website** built with **React**, **TypeScript**, **Three.js / WebGL**, **GSAP**, and **Node.js/Python** integration.
 
-A modern, high-performance **3D developer portfolio website** built with **React**, **TypeScript**, **Three.js**, **GSAP**, and **WebGL**.
+This portfolio is customized for **Rahul Parmar**, highlighting AI engineering, machine learning integrations, and full-stack web solutions.
 
-If you’re a developer looking for a **portfolio template** that feels premium, interactive, and memorable—this repo is for you.
-
-> Live preview: https://www.redoyanulhaque.me/
+> Live preview: Coming Soon
 
 ---
 
-## ✨ Highlights
+## 🎨 Tech Stack
 
-- **3D / WebGL experience** powered by **Three.js**
-- Smooth animations with **GSAP**
-- Modern **React + TypeScript** codebase
-- Fast, responsive UI (desktop + mobile)
-- Designed for developers, engineers, programmers, and creators
+- **Client / UI:** React, TypeScript, TailwindCSS, GSAP Animations, React Icons, Lenis Smooth Scroll
+- **3D Engine:** Three.js, WebGL, Drei, Fiber (utilizing client-side decryptors for AES-encoded binary models)
+- **AI Tiers:** OpenAI API integration (text-embedding-3-small, GPT-4o context trees)
+- **Backend & Data:** Node.js, Express, MongoDB (Mongoose schemas), Python normalization helper scripts
+- **Deployment:** Vercel Hosting and API pipelines
 
 ---
 
-## 🧰 Tech Stack
+## 🧠 Interactive AI Playground (`/play` route)
 
-- **React**
-- **TypeScript**
-- **Three.js / WebGL**
-- **GSAP**
-- **HTML / CSS / JavaScript**
+The portfolio includes an **AI Playground** that provides interactive technical showcases for recruiters and developers:
+
+1. **Candidex Explorer (Flagship Project):** Click-to-expand architecture showcase of your resume parsing platform detailing Spacy NER extractions, cosine vector similarity math, and recruiter pipeline steps.
+2. **Neural Network Visualizer:** Adjustable feedforward network demonstrating forward and error backpropagation signal flows with live loss curve calculations.
+3. **LLM Playground:** Interactive prompt strategy comparison contrasting Zero-shot, Few-shot, Chain-of-Thought, and Structured JSON.
+4. **Architecture Explorer:** Hierarchical mapping of client, gateway, backend processing, AI, and database tiers.
+5. **Recruiter & Developer Consoles:** Target panels showing resume credential viewers or folder structure layouts.
+6. **AI Roadmaps:** Transparent upcoming learning timelines (MCP, CV, MLOps, AI Agents) clearly labeled.
+
+---
+
+## 📂 Configuration System (`src/config/`)
+
+To separate logic from data and make the website easy to maintain, all text copy, timelines, links, and credentials are configuration-driven:
+
+- `personal.ts`: Full Name, Bio, Hero title, and About Me description.
+- `socials.ts`: Phone, Email, GitHub, LinkedIn, and local PDF resume path.
+- `experience.ts`: Work history timelines (e.g., Bluehole).
+- `skills.ts`: Categorized skills matrix.
+- `certifications.ts`: Verified certification links (Deloitte, Google, IBM, Vanderbilt) and local PDF mappings.
+- `projects.ts`: Flagship projects and development status records.
+- `playground.ts`: Explanations and metrics for the AI Playground.
+- `seo.ts`: Keywords, OpenGraph data, and descriptions.
 
 ---
 
 ## 🚀 Getting Started
 
 ### 1) Clone
-
 ```bash
-git clone https://github.com/red1-for-hek/portfolio-website.git
+git clone https://github.com/Rahul-parmar018/portfolio-website.git
 cd portfolio-website
 ```
 
 ### 2) Install
-
 ```bash
 npm install
 ```
 
-### 3) Run locally
-
+### 3) Run Locally
 ```bash
 npm run dev
 ```
 
-### 4) Build
-
+### 4) Production Build
 ```bash
 npm run build
 ```
 
 ---
 
-## 🧩 Customize (Quick Guide)
+## 🪪 License
 
-Typical things you’ll want to update:
-
-- **Your name + hero section text**
-- **Projects list**
-- **Social links** (GitHub, LinkedIn, email)
-- **SEO meta title/description**
-
----
-
-## ⭐ Support
-
-If you found this useful:
-
-- Please **star** the repository (it helps a lot)
-- Share it with a friend who needs a portfolio template
-- Sponsor via the **Sponsor** button on GitHub (if available in your region)
+This project is open source and available under the **MIT License**. See [LICENSE](LICENSE).
 
 ---
 
 ## 🤝 Connect
 
-- LinkedIn: https://www.linkedin.com/in/red1-for-hek/
-
----
-
-## 🏷️ Recommended GitHub Topics (add in repo settings)
-
-Add these topics to improve GitHub search visibility:
-
-`portfolio` `developer-portfolio` `portfolio-website` `portfolio-template` `3d-portfolio` `react` `typescript` `threejs` `webgl` `gsap` `frontend` `vite`
-
----
-
-## 🪪 License
-
-This project is open source and available under the **MIT License**. See [LICENSE](LICENSE).
+- **GitHub:** https://github.com/Rahul-parmar018
+- **LinkedIn:** https://www.linkedin.com/in/rahul-parmar-4018b5282/
+- **Email:** rahulparmar5531@gmail.com
